@@ -8,7 +8,7 @@
     "owner": null,
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "platforms": [
       "ios"
     ],

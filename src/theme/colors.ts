@@ -6,6 +6,7 @@ export const colors = {
   accent: '#F7B84F',
   text: '#FFFFFF',
   muted: '#9BB1D4',
+  separator: '#1F3A63',
   danger: '#FF6B6B',
   success: '#4FD1A1'
 } as const;
