@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  screenTimeManager,
-  screenTimeEvents,
-  type BlockSchedule,
-  type EventPayload,
-  type SelectedApplication,
-} from '../native/AppBlockerModule';
+import { StorageService } from '../services/storage';
+// Using mock for development - change to '../native/AppBlockerModule' when native module is ready
+import { screenTimeManager, screenTimeEvents } from '../native/AppBlockerModule.mock';
+import type { BlockSchedule, EventPayload, SelectedApplication } from '../types';
 
-const SELECTED_APPS_KEY = 'appblocker.selectedApps';
-const BLOCK_PLAN_KEY = 'appblocker.plan';
 const FOCUS_IDENTIFIER_PREFIX = 'focus-session';
 
 export interface BlockingPlan {
@@ -99,11 +93,11 @@ const extractFocusSession = (schedules: BlockSchedule[]): FocusSession | undefin
 };
 
 const persistApps = async (apps: SelectedApplication[]) => {
-  await AsyncStorage.setItem(SELECTED_APPS_KEY, JSON.stringify(apps));
+  await StorageService.saveSelectedApps(apps);
 };
 
 const persistPlan = async (plan: BlockingPlan) => {
-  await AsyncStorage.setItem(BLOCK_PLAN_KEY, JSON.stringify(plan));
+  await StorageService.saveBlockPlan(plan);
 };
 
 export const useAppBlocker = (): [AppBlockerState, AppBlockerActions] => {
@@ -123,7 +117,7 @@ export const useAppBlocker = (): [AppBlockerState, AppBlockerActions] => {
         screenTimeManager.requestAuthorization(),
         screenTimeManager.loadSelectedApplications(),
         screenTimeManager.fetchActiveBlocks(),
-        AsyncStorage.getItem(BLOCK_PLAN_KEY),
+        StorageService.getBlockPlan(),
       ]);
 
       const plan = parsePlan(storedPlan);

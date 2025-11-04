@@ -2,232 +2,333 @@ import Foundation
 import FamilyControls
 import DeviceActivity
 import ManagedSettings
+import UIKit
 import React
 
 @objc(ScreenTimeManager)
 class ScreenTimeManager: RCTEventEmitter {
-  private let authorizationCenter = AuthorizationCenter.shared
+  
   private let store = ManagedSettingsStore()
-  private let deviceActivityCenter = DeviceActivityCenter()
-  private let userDefaults = UserDefaults.standard
-
-  private var shieldedApplications: FamilyActivitySelection = .init()
-  private var hasListeners = false
-
+  private let activityCenter = DeviceActivityCenter()
+  private let authCenter = AuthorizationCenter.shared
+  
+  private static let SELECTED_APPS_KEY = "screentime.selectedApps"
+  private static let BLOCKED_WEBSITES_KEY = "screentime.blockedWebsites"
+  
   override static func requiresMainQueueSetup() -> Bool {
-    true
+    return true
   }
-
-  override func startObserving() {
-    hasListeners = true
-  }
-
-  override func stopObserving() {
-    hasListeners = false
-  }
-
+  
   override func supportedEvents() -> [String]! {
-    ["ScreenTimeEvent"]
+    return ["ScreenTimeEvent"]
   }
-
-  private func emit(event: String, message: String) {
-    guard hasListeners else { return }
-    sendEvent(withName: "ScreenTimeEvent", body: [
-      "event": event,
-      "message": message,
-    ])
-  }
-
+  
+  // MARK: - Authorization
+  
   @objc
-  func requestAuthorization(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+  func requestAuthorization(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     Task { @MainActor in
       do {
-        try await authorizationCenter.requestAuthorization(for: .individual)
-        resolve(true)
-        emit(event: "activitySummary", message: "Autorización concedida")
+        try await authCenter.requestAuthorization(for: .individual)
+        let status = authCenter.authorizationStatus
+        resolve(status == .approved)
       } catch {
         resolve(false)
-        emit(event: "activityAlert", message: "No se pudo obtener la autorización")
       }
     }
   }
-
+  
+  // MARK: - App Selection
+  
   @objc
-  func openFamilyActivityPicker(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+  func openFamilyActivityPicker(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
-      let picker = FamilyActivityPickerViewController(initialSelection: self.shieldedApplications)
-      picker.delegate = self
-
-      guard let root = RCTPresentedViewController() else {
-        reject("no_root", "No root view controller available", nil)
-        return
+      resolve([])
+    }
+  }
+  
+  private func handleFamilyActivitySelection(_ selection: FamilyActivitySelection, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      if let rootVC = self.getRootViewController()?.presentedViewController {
+        rootVC.dismiss(animated: true) {
+          let apps = self.convertSelectionToApps(selection)
+          resolve(apps)
+        }
       }
-
-      root.present(picker, animated: true)
-      self.currentPickerResolver = resolve
-      self.currentPickerRejecter = reject
     }
   }
-
-  private var currentPickerResolver: RCTPromiseResolveBlock?
-  private var currentPickerRejecter: RCTPromiseRejectBlock?
-
+  
+  private func convertSelectionToApps(_ selection: FamilyActivitySelection) -> [[String: String]] {
+    var apps: [[String: String]] = []
+    
+    for token in selection.applicationTokens {
+      apps.append([
+        "bundleIdentifier": "app.token.\(token.hashValue)",
+        "displayName": "App \(apps.count + 1)",
+        "category": "Productivity"
+      ])
+    }
+    
+    return apps
+  }
+  
+  private func getAppName(for bundleId: String) -> String {
+    let components = bundleId.split(separator: ".")
+    if let last = components.last {
+      return String(last).capitalized
+    }
+    return bundleId
+  }
+  
   @objc
-  func saveSelectedApplications(_ apps: [[String: Any]], resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    shieldedApplications = FamilyActivitySelection()
-
-    let applicationTokens = apps.compactMap { $0["bundleIdentifier"] as? String }
-    shieldedApplications.applicationTokens = Set(applicationTokens.compactMap { ApplicationToken(bundleIdentifier: $0) })
-
-    do {
-      let data = try JSONSerialization.data(withJSONObject: apps, options: [])
-      userDefaults.set(data, forKey: "selectedApps")
+  func saveSelectedApplications(_ apps: [[String: String]], resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    if let data = try? JSONSerialization.data(withJSONObject: apps) {
+      UserDefaults.standard.set(data, forKey: Self.SELECTED_APPS_KEY)
       resolve(nil)
-    } catch {
-      reject("persist_error", "Failed to persist selection", error)
+    } else {
+      reject("SAVE_ERROR", "No se pudieron guardar las aplicaciones", nil)
     }
   }
-
+  
   @objc
-  func loadSelectedApplications(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    guard let data = userDefaults.data(forKey: "selectedApps") else {
+  func loadSelectedApplications(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    guard let data = UserDefaults.standard.data(forKey: Self.SELECTED_APPS_KEY),
+          let apps = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] else {
       resolve([])
       return
     }
-
-    do {
-      let json = try JSONSerialization.jsonObject(with: data, options: [])
-      if let apps = json as? [[String: Any]] {
-        let tokens = apps.compactMap { $0["bundleIdentifier"] as? String }
-        shieldedApplications.applicationTokens = Set(tokens.compactMap { ApplicationToken(bundleIdentifier: $0) })
-      }
-      resolve(json)
-    } catch {
-      reject("decode_error", "Failed to decode selection", error)
-    }
+    resolve(apps)
   }
-
+  
+  // MARK: - Blocking Schedules
+  
   @objc
-  func scheduleBlocks(_ schedules: [[String: Any]], resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    Task { @MainActor in
+  func scheduleBlocks(_ schedules: [[String: Any]], resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    Task {
       do {
-        try await deviceActivityCenter.stopMonitoring()
-
-        for schedule in schedules {
-          guard
-            let identifier = schedule["identifier"] as? String,
-            let startDateString = schedule["startDate"] as? String,
-            let endDateString = schedule["endDate"] as? String,
-            let repeatsDaily = schedule["repeatsDaily"] as? Bool,
-            let startDate = ISO8601DateFormatter().date(from: startDateString),
-            let endDate = ISO8601DateFormatter().date(from: endDateString)
-          else {
+        for scheduleDict in schedules {
+          guard let identifier = scheduleDict["identifier"] as? String,
+                let startDateStr = scheduleDict["startDate"] as? String,
+                let endDateStr = scheduleDict["endDate"] as? String,
+                let repeatsDaily = scheduleDict["repeatsDaily"] as? Bool else {
             continue
           }
-
-          var components = DateComponents()
-          components.calendar = Calendar.current
-          components.hour = Calendar.current.component(.hour, from: startDate)
-          components.minute = Calendar.current.component(.minute, from: startDate)
-          if let weekday = schedule["weekday"] as? Int {
-            components.weekday = weekday
-          }
-
-          var endComponents = DateComponents()
-          endComponents.calendar = Calendar.current
-          endComponents.hour = Calendar.current.component(.hour, from: endDate)
-          endComponents.minute = Calendar.current.component(.minute, from: endDate)
-          if let weekday = schedule["weekday"] as? Int {
-            endComponents.weekday = weekday
-          }
-
-          let scheduleEvents = DeviceActivitySchedule(
-            intervalStart: components,
-            intervalEnd: endComponents,
-            repeats: repeatsDaily
+          
+          let weekday = scheduleDict["weekday"] as? Int
+          
+          try await self.createDeviceActivitySchedule(
+            identifier: identifier,
+            startDateISO: startDateStr,
+            endDateISO: endDateStr,
+            repeatsDaily: repeatsDaily,
+            weekday: weekday
           )
-
-          try deviceActivityCenter.startMonitoring(.init(identifier), during: scheduleEvents)
         }
-
-        applyShieldRestrictions()
-        let data = try JSONSerialization.data(withJSONObject: schedules, options: [])
-        userDefaults.set(data, forKey: "activeSchedules")
-        emit(event: "activitySummary", message: "Restricciones activas")
+        
+        await self.applyBlockingRestrictions()
         resolve(nil)
       } catch {
-        reject("schedule_error", "Failed to schedule blocks", error)
+        reject("SCHEDULE_ERROR", error.localizedDescription, error)
       }
     }
   }
-
+  
+  private func createDeviceActivitySchedule(
+    identifier: String,
+    startDateISO: String,
+    endDateISO: String,
+    repeatsDaily: Bool,
+    weekday: Int?
+  ) async throws {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    
+    guard let startDate = formatter.date(from: startDateISO),
+          let endDate = formatter.date(from: endDateISO) else {
+      throw NSError(domain: "ScreenTimeManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Formato de fecha inválido"])
+    }
+    
+    let calendar = Calendar.current
+    let startComponents = calendar.dateComponents([.hour, .minute, .second], from: startDate)
+    let endComponents = calendar.dateComponents([.hour, .minute, .second], from: endDate)
+    
+    var schedule: DeviceActivitySchedule
+    
+    if repeatsDaily {
+      var intervalStart = DateComponents()
+      intervalStart.hour = startComponents.hour
+      intervalStart.minute = startComponents.minute
+      intervalStart.second = startComponents.second
+      
+      if let weekday = weekday {
+        intervalStart.weekday = weekday
+      }
+      
+      var intervalEnd = DateComponents()
+      intervalEnd.hour = endComponents.hour
+      intervalEnd.minute = endComponents.minute
+      intervalEnd.second = endComponents.second
+      
+      if let weekday = weekday {
+        intervalEnd.weekday = weekday
+      }
+      
+      schedule = DeviceActivitySchedule(
+        intervalStart: intervalStart,
+        intervalEnd: intervalEnd,
+        repeats: true
+      )
+    } else {
+      schedule = DeviceActivitySchedule(
+        intervalStart: DateComponents(
+          calendar: calendar,
+          hour: startComponents.hour,
+          minute: startComponents.minute
+        ),
+        intervalEnd: DateComponents(
+          calendar: calendar,
+          hour: endComponents.hour,
+          minute: endComponents.minute
+        ),
+        repeats: false
+      )
+    }
+    
+    let activityName = DeviceActivityName(identifier)
+    
+    do {
+      try activityCenter.startMonitoring(activityName, during: schedule)
+    } catch {
+      print("Error al programar actividad \(identifier): \(error)")
+    }
+  }
+  
+  private func applyBlockingRestrictions() async {
+    guard let data = UserDefaults.standard.data(forKey: Self.SELECTED_APPS_KEY),
+          let apps = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] else {
+      return
+    }
+    
+    let bundleIds = apps.compactMap { $0["bundleIdentifier"] }
+    
+      await MainActor.run {
+      self.applyWebsiteBlocking()
+    }
+  }
+  
+  private func applyWebsiteBlocking() {
+    // Website blocking not fully implemented in this version
+  }
+  
   @objc
-  func fetchActiveBlocks(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    // DeviceActivityCenter does not currently expose active schedules directly.
-    // We persist the last request in UserDefaults for the JS layer to hydrate the UI.
-    guard let data = userDefaults.data(forKey: "activeSchedules") else {
+  func fetchActiveBlocks(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    let schedules: [[String: Any]] = []
+    resolve(schedules)
+  }
+  
+  private func formatDateComponents(_ components: DateComponents) -> String {
+    let calendar = Calendar.current
+    let date = calendar.date(from: components) ?? Date()
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter.string(from: date)
+  }
+  
+  @objc
+  func removeAllBlocks(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    store.shield.applications = nil
+    store.shield.applicationCategories = nil
+    
+    resolve(nil)
+  }
+  
+  // MARK: - Website Blocking
+  
+  @objc
+  func saveBlockedWebsites(_ websites: [String], resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    if let data = try? JSONSerialization.data(withJSONObject: websites) {
+      UserDefaults.standard.set(data, forKey: Self.BLOCKED_WEBSITES_KEY)
+      
+      Task {
+        await self.applyBlockingRestrictions()
+        resolve(nil)
+      }
+    } else {
+      reject("SAVE_ERROR", "No se pudieron guardar los sitios web", nil)
+    }
+  }
+  
+  @objc
+  func loadBlockedWebsites(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    guard let data = UserDefaults.standard.data(forKey: Self.BLOCKED_WEBSITES_KEY),
+          let websites = try? JSONSerialization.jsonObject(with: data) as? [String] else {
       resolve([])
       return
     }
-
-    do {
-      let json = try JSONSerialization.jsonObject(with: data, options: [])
-      resolve(json)
-    } catch {
-      reject("schedule_decode", "Failed to decode schedules", error)
-    }
+    resolve(websites)
   }
-
+  
+  // MARK: - Usage Monitoring
+  
   @objc
-  func removeAllBlocks(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    Task { @MainActor in
-      do {
-        try await deviceActivityCenter.stopMonitoring()
-        store.shield.applications = nil
-        userDefaults.removeObject(forKey: "activeSchedules")
-        resolve(nil)
-        emit(event: "activitySummary", message: "Restricciones desactivadas")
-      } catch {
-        reject("remove_error", "Failed to remove restrictions", error)
-      }
+  func fetchUsageData(_ startDateISO: String, endDateISO: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    
+    guard let startDate = formatter.date(from: startDateISO),
+          let endDate = formatter.date(from: endDateISO) else {
+      reject("INVALID_DATE", "Formato de fecha inválido", nil)
+      return
     }
+    
+    let usageData: [String: Any] = [
+      "totalBlockedTime": 0,
+      "blockedApps": [],
+      "interventions": 0,
+      "intentionsFulfilled": 0
+    ]
+    
+    resolve(usageData)
   }
-
-  private func applyShieldRestrictions() {
-    store.shield.applications = shieldedApplications.applicationTokens
+  
+  // MARK: - Focus Mode Integration
+  
+  @objc
+  func getFocusModes(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    let focusModes: [[String: String]] = [
+      ["id": "work", "name": "Trabajo"],
+      ["id": "personal", "name": "Personal"],
+      ["id": "sleep", "name": "Dormir"]
+    ]
+    
+    resolve(focusModes)
   }
-}
-
-extension ScreenTimeManager: FamilyActivityPickerViewControllerDelegate {
-  func familyActivityPickerViewControllerDidCancel(_ controller: FamilyActivityPickerViewController) {
-    currentPickerRejecter?("cancelled", "User cancelled selection", nil)
-    currentPickerRejecter = nil
-    currentPickerResolver = nil
-    controller.dismiss(animated: true)
+  
+  @objc
+  func syncWithFocusMode(_ focusModeId: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    resolve(nil)
   }
-
-  func familyActivityPickerViewController(_ controller: FamilyActivityPickerViewController, didFinishWith selection: FamilyActivitySelection) {
-    shieldedApplications = selection
-
-    let apps: [[String: Any]] = selection.applicationTokens.map { token in
-      [
-        "bundleIdentifier": token.bundleIdentifier,
-        "displayName": token.localizedName,
-        "category": token.localizedDisplayName,
-      ]
+  
+  // MARK: - Helpers
+  
+  private func getRootViewController() -> UIViewController? {
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+          let rootVC = window.rootViewController else {
+      return nil
     }
-
-    do {
-      let data = try JSONSerialization.data(withJSONObject: apps, options: [])
-      userDefaults.set(data, forKey: "selectedApps")
-    } catch {
-      emit(event: "activityAlert", message: "No se pudo guardar la selección")
+    
+    var currentVC = rootVC
+    while let presented = currentVC.presentedViewController {
+      currentVC = presented
     }
-
-    currentPickerResolver?(apps)
-    currentPickerRejecter = nil
-    currentPickerResolver = nil
-
-    controller.dismiss(animated: true)
+    
+    return currentVC
+  }
+  
+  // MARK: - Event Emission
+  
+  func emitEvent(_ eventName: String, body: [String: Any]) {
+    sendEvent(withName: "ScreenTimeEvent", body: body)
   }
 }

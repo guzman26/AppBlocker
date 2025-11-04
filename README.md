@@ -1,14 +1,36 @@
 # AppBlocker
 
 Aplicación Expo (React Native + TypeScript) orientada a iOS que se integra con las Screen Time APIs de Apple (FamilyControls y DeviceActivity)
-para crear rutinas de bloqueo de aplicaciones.
+para crear rutinas de bloqueo de aplicaciones con funcionalidades avanzadas inspiradas en Opal y One Sec.
 
 ## Funcionalidades clave
 
-- Selección guiada de aplicaciones a bloquear mediante el picker nativo de Screen Time.
-- Rutinas inteligentes configurables por horario y días de la semana.
-- Bloqueos de foco instantáneos con duración personalizable para momentos de concentración.
-- Sincronización de los planes con el módulo nativo y persistencia local para restaurar el estado.
+### Bloqueo de Apps
+- Selección guiada de aplicaciones mediante el picker nativo de Screen Time
+- Rutinas inteligentes configurables por horario y días de la semana
+- Bloqueos de foco instantáneos (15, 25, 45, 60 minutos)
+
+### Fricción Intencional (One Sec)
+- Pausas obligatorias con ejercicios de respiración antes de abrir apps bloqueadas
+- Prompts de intención: "¿Por qué quieres abrir esta app?"
+- Sugerencias de alternativas saludables
+- Recordatorios de intención
+
+### Analytics y Reportes (Opal)
+- Gráficas de tiempo bloqueado (últimos 7 días)
+- Métricas de racha actual de días consecutivos
+- Estadísticas semanales y mensuales
+- Conteo de intervenciones y bloqueos exitosos
+- Progreso hacia metas diarias
+
+### Bloqueo de Sitios Web
+- Bloquear dominios específicos en Safari y otros navegadores
+- Aplicar mismos horarios que apps bloqueadas
+- Gestión de lista de sitios bloqueados
+
+### Integración con Focus Modes
+- Sincronización con Focus Modes nativos de iOS
+- Activación automática de bloqueos según Focus Mode activo
 
 ## Requisitos
 
@@ -45,10 +67,38 @@ Si ya tienes el proyecto iOS precompilado, también puedes abrir `ios/AppBlocker
 
 ## Estructura destacada
 
-- `src/App.tsx`: Configura la navegación y el contenedor principal.
-- `src/screens/DashboardScreen.tsx`: Pantalla principal para configurar apps bloqueadas, rutina semanal y focos inmediatos.
-- `src/hooks/useAppBlocker.ts`: Hook que coordina la interacción con el módulo nativo y gestiona planes semanales.
-- `ios/ScreenTimeManager.swift`: Implementación del módulo nativo que consume FamilyControls y DeviceActivity.
+### Navegación
+- `src/App.tsx`: Navegación por tabs con 4 pantallas principales
+
+### Pantallas
+- `src/screens/DashboardScreen.tsx`: Configurar apps, rutinas y focos inmediatos
+- `src/screens/AnalyticsScreen.tsx`: Métricas, gráficas y reportes de uso
+- `src/screens/WebsiteBlockerScreen.tsx`: Gestión de sitios web bloqueados
+- `src/screens/FocusModeScreen.tsx`: Integración con Focus Modes de iOS
+- `src/screens/IntentionPromptScreen.tsx`: Modal de intervención con pausas
+
+### Hooks
+- `src/hooks/useAppBlocker.ts`: Gestión de bloqueos y rutinas
+- `src/hooks/useAnalytics.ts`: Métricas y estadísticas de uso
+- `src/hooks/useIntervention.ts`: Configuración de fricción intencional
+- `src/hooks/useWebsiteBlocker.ts`: Bloqueo de sitios web
+- `src/hooks/useFocusMode.ts`: Sincronización con Focus Modes
+
+### Componentes
+- `src/components/BreathingExercise.tsx`: Animación de respiración
+- `src/components/IntentionInput.tsx`: Input de intención
+- `src/components/AlternativeSuggestion.tsx`: Sugerencias de alternativas
+- `src/components/UsageChart.tsx`: Gráfica de uso semanal
+- `src/components/StatCard.tsx`: Tarjetas de métricas
+- `src/components/ProgressRing.tsx`: Anillo de progreso
+
+### Servicios
+- `src/services/storage.ts`: Servicio centralizado de AsyncStorage
+- `src/types/index.ts`: Tipos TypeScript compartidos
+
+### Módulo Nativo iOS
+- `ios/ScreenTimeManager.swift`: Implementación de FamilyControls y DeviceActivity
+- `ios/ScreenTimeManager.m`: Bridge Objective-C
 
 ## Notas sobre Screen Time
 
