@@ -1,0 +1,19 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+pubspec.lock
+build/
+.idea/
+.vscode/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+android/
+ios/
+web/
+linux/
+windows/
+macos/
+coverage/
+*.iml
+.DS_Store
