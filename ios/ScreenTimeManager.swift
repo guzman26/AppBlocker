@@ -129,11 +129,17 @@ class ScreenTimeManager: RCTEventEmitter {
           components.calendar = Calendar.current
           components.hour = Calendar.current.component(.hour, from: startDate)
           components.minute = Calendar.current.component(.minute, from: startDate)
+          if let weekday = schedule["weekday"] as? Int {
+            components.weekday = weekday
+          }
 
           var endComponents = DateComponents()
           endComponents.calendar = Calendar.current
           endComponents.hour = Calendar.current.component(.hour, from: endDate)
           endComponents.minute = Calendar.current.component(.minute, from: endDate)
+          if let weekday = schedule["weekday"] as? Int {
+            endComponents.weekday = weekday
+          }
 
           let scheduleEvents = DeviceActivitySchedule(
             intervalStart: components,

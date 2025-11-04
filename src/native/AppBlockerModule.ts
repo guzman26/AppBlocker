@@ -5,6 +5,11 @@ type BlockSchedule = {
   startDate: string;
   endDate: string;
   repeatsDaily: boolean;
+  /**
+   * ISO weekday number expected by iOS DateComponents (1 = Sunday ... 7 = Saturday).
+   * When present the block will only run on the specified weekday.
+   */
+  weekday?: number;
 };
 
 type SelectedApplication = {
