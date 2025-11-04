@@ -9,8 +9,8 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "esnext",
-    "types": ["react", "react-native"]
+    "types": ["react", "react-native", "expo"]
   },
-  "include": ["src", "index.js", "App.tsx", "jest.setup.js"],
+  "include": ["src", "index.js"],
   "exclude": ["node_modules"]
 }

@@ -1,4 +1,27 @@
 {
-  "name": "AppBlocker",
-  "displayName": "AppBlocker"
+  "expo": {
+    "name": "AppBlocker",
+    "slug": "appblocker",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "appblocker",
+    "owner": null,
+    "userInterfaceStyle": "automatic",
+    "jsEngine": "hermes",
+    "newArchEnabled": true,
+    "platforms": ["ios"],
+    "ios": {
+      "bundleIdentifier": "com.appblocker.mobile",
+      "supportsTablet": false,
+      "usesIcloudStorage": false,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Necesitamos acceder a tu biblioteca para mostrar íconos personalizados.",
+        "NSUserTrackingUsageDescription": "Se utiliza para mejorar tu experiencia dentro de AppBlocker."
+      }
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"]
+  }
 }
