@@ -12,7 +12,15 @@
       "ios"
     ],
     "plugins": [
-      "./plugins/withScreenTimeManager.js"
+      "./plugins/withScreenTimeManager.js",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.0"
+          }
+        }
+      ]
     ],
     "ios": {
       "bundleIdentifier": "com.appblocker.mobile",
@@ -23,7 +31,8 @@
       },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Necesitamos acceder a tu biblioteca para mostrar íconos personalizados.",
-        "NSUserTrackingUsageDescription": "Se utiliza para mejorar tu experiencia dentro de AppBlocker."
+        "NSUserTrackingUsageDescription": "Se utiliza para mejorar tu experiencia dentro de AppBlocker.",
+        "NSFamilyControlsUsageDescription": "Necesitamos acceder a Screen Time para ayudarte a bloquear aplicaciones y mantener el enfoque."
       }
     },
     "updates": {

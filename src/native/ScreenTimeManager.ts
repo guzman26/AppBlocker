@@ -1,11 +1,18 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
+export interface SelectionPayload {
+  applications: string[];
+  categories: string[];
+  webDomains: string[];
+}
+
 interface ScreenTimeManagerInterface {
   requestAuthorization(): Promise<boolean>;
-  openFamilyActivityPicker(): Promise<any[]>;
+  checkAuthorizationStatus(): Promise<boolean>;
+  openFamilyActivityPicker(): Promise<SelectionPayload>;
   blockSelectedApps(): Promise<boolean>;
   unblockApps(): Promise<boolean>;
-  getBlockedApps(): Promise<string[]>;
+  getBlockedApps(): Promise<SelectionPayload>;
   blockWebsite(url: string): Promise<boolean>;
   unblockWebsite(url: string): Promise<boolean>;
   getBlockedWebsites(): Promise<string[]>;
@@ -52,16 +59,39 @@ class ScreenTimeManagerWrapper {
   }
 
   /**
+   * Verify the current Screen Time authorization state
+   */
+  async checkAuthorizationStatus(): Promise<boolean> {
+    if (!this.manager) return false;
+    try {
+      return await this.manager.checkAuthorizationStatus();
+    } catch (error) {
+      console.error('Error checking authorization status:', error);
+      return false;
+    }
+  }
+
+  /**
    * Open the native Family Activity Picker to select apps
    */
-  async openFamilyActivityPicker(): Promise<any[]> {
-    if (!this.manager) return [];
+  async openFamilyActivityPicker(): Promise<SelectionPayload> {
+    if (!this.manager) {
+      return {
+        applications: [],
+        categories: [],
+        webDomains: [],
+      };
+    }
     try {
-      const apps = await this.manager.openFamilyActivityPicker();
-      return apps;
+      const selection = await this.manager.openFamilyActivityPicker();
+      return normalizeSelection(selection);
     } catch (error) {
       console.error('Error opening family activity picker:', error);
-      return [];
+      return {
+        applications: [],
+        categories: [],
+        webDomains: [],
+      };
     }
   }
 
@@ -96,14 +126,16 @@ class ScreenTimeManagerWrapper {
   /**
    * Get list of currently blocked apps
    */
-  async getBlockedApps(): Promise<string[]> {
-    if (!this.manager) return [];
+  async getBlockedApps(): Promise<SelectionPayload> {
+    if (!this.manager) {
+      return { applications: [], categories: [], webDomains: [] };
+    }
     try {
       const apps = await this.manager.getBlockedApps();
-      return apps;
+      return normalizeSelection(apps);
     } catch (error) {
       console.error('Error getting blocked apps:', error);
-      return [];
+      return { applications: [], categories: [], webDomains: [] };
     }
   }
 
@@ -207,4 +239,17 @@ class ScreenTimeManagerWrapper {
 }
 
 export default new ScreenTimeManagerWrapper();
+
+const normalizeSelection = (selection: SelectionPayload | undefined): SelectionPayload => {
+  if (!selection) {
+    return { applications: [], categories: [], webDomains: [] };
+  }
+
+  const { applications, categories, webDomains } = selection;
+  return {
+    applications: Array.isArray(applications) ? applications : [],
+    categories: Array.isArray(categories) ? categories : [],
+    webDomains: Array.isArray(webDomains) ? webDomains : [],
+  };
+};
 

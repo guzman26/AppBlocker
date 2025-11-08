@@ -12,6 +12,10 @@ interface InsightCardProps {
 export const InsightCard: React.FC<InsightCardProps> = ({ insight }) => {
   const isPositive = insight.trend >= 0;
   const trendColor = isPositive ? colors.success : colors.caution;
+  const clampedTrend = Math.min(Math.max(insight.trend, -1), 1);
+  const trendMagnitude = Math.abs(clampedTrend);
+  const trendWidth = `${(trendMagnitude * 100).toFixed(0)}%` as `${number}%`;
+  const trendPercentage = Math.round(trendMagnitude * 100);
 
   return (
     <View style={styles.container}>
@@ -37,10 +41,10 @@ export const InsightCard: React.FC<InsightCardProps> = ({ insight }) => {
             colors={[colors.primary, colors.accentIndigo]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.trendMeterBar, { width: `${Math.abs(insight.trend).toFixed(2) * 100}%` }]}
+            style={[styles.trendMeterBar, { width: trendWidth }]}
           />
           <Text style={styles.trendMeterText}>
-            {Math.round(Math.abs(insight.trend) * 100)}% de tendencia positiva
+            {trendPercentage}% de tendencia positiva
           </Text>
         </View>
       </View>

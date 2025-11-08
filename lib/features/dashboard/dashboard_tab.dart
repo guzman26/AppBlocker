@@ -5,6 +5,7 @@ import '../../theme/colors.dart';
 import '../../theme/typography.dart';
 import 'widgets/app_usage_tile.dart';
 import 'widgets/block_session_card.dart';
+import 'widgets/focus_control_tile.dart';
 import 'widgets/focus_mode_header.dart';
 
 class DashboardTab extends StatefulWidget {
@@ -19,9 +20,23 @@ class DashboardTab extends StatefulWidget {
 class _DashboardTabState extends State<DashboardTab> {
   int _selectedPeriod = 0;
   bool _focusEnabled = true;
+  bool _strictModeEnabled = true;
+  bool _shieldNewInstalls = true;
+  bool _guidedTransitions = true;
 
   @override
   Widget build(BuildContext context) {
+    final sessions = widget.data.sessions;
+    final activeSession = sessions.firstWhere(
+      (session) => session.isActive,
+      orElse: () => sessions.first,
+    );
+    final blockedAppsCount = sessions
+        .where((session) => session.isActive)
+        .fold<int>(0, (count, session) => count + session.blockedApps.length);
+    final overrideAttempts = sessions
+        .fold<int>(0, (count, session) => count + session.overrideAttempts);
+
     return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
       child: CustomScrollView(
@@ -41,11 +56,63 @@ class _DashboardTabState extends State<DashboardTab> {
                     onChanged: (value) {
                       setState(() => _focusEnabled = value);
                     },
+                    strictModeEnabled: _strictModeEnabled,
+                    onStrictModeChanged: (value) {
+                      setState(() => _strictModeEnabled = value);
+                    },
+                    activeSessionName: activeSession.name,
+                    focusLevel: activeSession.focusLevel,
+                    blockedAppsCount: blockedAppsCount,
+                    overrideAttempts: overrideAttempts,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Controles avanzados',
+                    style: AppTypography.title.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  FocusControlTile(
+                    icon: CupertinoIcons.lock_fill,
+                    accentColor: AppColors.accentPurple,
+                    title: 'Blindaje para apps nuevas',
+                    subtitle:
+                        'Bloquea automáticamente las apps instaladas durante un turno SHIFT hasta revisarlas.',
+                    value: _shieldNewInstalls,
+                    enabled: _focusEnabled,
+                    onChanged: (value) {
+                      setState(() => _shieldNewInstalls = value);
+                    },
+                  ),
+                  FocusControlTile(
+                    icon: CupertinoIcons.timer,
+                    accentColor: AppColors.accentTeal,
+                    title: 'Transiciones guiadas',
+                    subtitle:
+                        'Avisa con respiraciones y vibración antes de cambiar de bloque para evitar cortes bruscos.',
+                    value: _guidedTransitions,
+                    enabled: _focusEnabled,
+                    onChanged: (value) {
+                      setState(() => _guidedTransitions = value);
+                    },
+                  ),
+                  FocusControlTile(
+                    icon: CupertinoIcons.person_crop_square,
+                    accentColor: AppColors.accentIndigo,
+                    title: 'Supervisor de confianza',
+                    subtitle:
+                        'Envía un resumen de intentos de desbloqueo a tu accountability partner.',
+                    value: _strictModeEnabled,
+                    enabled: _focusEnabled,
+                    onChanged: (value) {
+                      setState(() => _strictModeEnabled = value);
+                    },
+                  ),
+                  const SizedBox(height: 22),
                   _buildSegmentedControl(),
                   const SizedBox(height: 24),
-                  ...widget.data.sessions.map((session) => Padding(
+                  ...sessions.map((session) => Padding(
                         padding: const EdgeInsets.only(bottom: 18),
                         child: BlockSessionCard(session: session),
                       )),

@@ -12,7 +12,7 @@ export const BlockSessionCard: React.FC<BlockSessionCardProps> = ({ session }) =
   const gradientColors = [
     `${session.accentColor}E6`, // 90% opacity
     `${session.accentColor}A6`, // 65% opacity
-  ];
+  ] as const;
 
   return (
     <View style={styles.container}>
