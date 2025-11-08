@@ -55,13 +55,17 @@ export const CupertinoTabBar: React.FC<BottomTabBarProps> = ({ state, descriptor
           });
         };
 
+        const { tabBarTestID } = options as typeof options & {
+          tabBarTestID?: string;
+        };
+
         return (
           <TouchableOpacity
             key={route.key}
             accessibilityRole="button"
             accessibilityState={isFocused ? { selected: true } : {}}
             accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarTestID}
+            testID={tabBarTestID}
             onPress={onPress}
             onLongPress={onLongPress}
             style={styles.tab}

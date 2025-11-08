@@ -49,8 +49,19 @@ class BlockSessionCard extends StatelessWidget {
                     Text(
                       session.description,
                       style: AppTypography.body.copyWith(
-                        color: CupertinoColors.white.withOpacity(0.8),
+                        color: CupertinoColors.white.withOpacity(0.82),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        _FocusLevelChip(label: session.focusLevel),
+                        ...session.blockedApps.map(
+                          (app) => _InfoChip(label: app),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -87,11 +98,33 @@ class BlockSessionCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                session.isActive ? 'En progreso' : 'Programado',
-                style: AppTypography.body.copyWith(
-                  color: CupertinoColors.white,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.isActive ? 'En progreso' : 'Programado',
+                    style: AppTypography.body.copyWith(
+                      color: CupertinoColors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.hand_raised_fill,
+                        size: 16,
+                        color: CupertinoColors.white.withOpacity(0.75),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${session.overrideAttempts} intentos de desbloqueo',
+                        style: AppTypography.footnote.copyWith(
+                          color: CupertinoColors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               DecoratedBox(
                 decoration: BoxDecoration(
@@ -111,8 +144,114 @@ class BlockSessionCard extends StatelessWidget {
               ),
             ],
           ),
+          if (session.automationNotes.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              color: CupertinoColors.white.withOpacity(0.18),
+            ),
+            const SizedBox(height: 14),
+            ...session.automationNotes.map(
+              (note) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _AutomationNote(text: note),
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _FocusLevelChip extends StatelessWidget {
+  const _FocusLevelChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: CupertinoColors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              CupertinoIcons.waveform_path,
+              size: 16,
+              color: CupertinoColors.white,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: AppTypography.footnote.copyWith(
+                color: CupertinoColors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: CupertinoColors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Text(
+          label,
+          style: AppTypography.footnote.copyWith(
+            color: CupertinoColors.white.withOpacity(0.9),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AutomationNote extends StatelessWidget {
+  const _AutomationNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          CupertinoIcons.sparkles,
+          size: 16,
+          color: CupertinoColors.white,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTypography.footnote.copyWith(
+              color: CupertinoColors.white.withOpacity(0.86),
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

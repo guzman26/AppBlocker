@@ -32,6 +32,13 @@ class MockData {
           progress: 0.68,
           isActive: true,
           accentColor: AppColors.accentIndigo,
+          focusLevel: 'Intensidad alta',
+          blockedApps: ['Redes sociales', 'Mensajería', 'Compras'],
+          automationNotes: [
+            'Analiza la energía del Apple Watch para ajustar micro descansos',
+            'Solicita check-in cada 45 min antes de permitir desbloqueos',
+          ],
+          overrideAttempts: 2,
         ),
         BlockSession(
           name: 'Desconexión Nocturna',
@@ -40,6 +47,28 @@ class MockData {
           progress: 0.15,
           isActive: false,
           accentColor: AppColors.accentPink,
+          focusLevel: 'Modo descanso',
+          blockedApps: ['Correo', 'Redes sociales', 'Pantalla completa'],
+          automationNotes: [
+            'Activa atenuación de pantalla y sonidos relajantes',
+            'Solo permite llamadas frecuentes y apps de salud',
+          ],
+          overrideAttempts: 1,
+        ),
+        BlockSession(
+          name: 'Sprint Creativo',
+          description: 'Ventana para diseño sin interrupciones externas',
+          timeRange: '15:00 - 17:00',
+          progress: 0.42,
+          isActive: false,
+          accentColor: AppColors.accentTeal,
+          focusLevel: 'Intensidad media',
+          blockedApps: ['Navegador', 'Chats internos'],
+          automationNotes: [
+            'Sincroniza playlist instrumental y modo concentración en Home',
+            'Prioriza apps de bocetos y referencias sin notificaciones',
+          ],
+          overrideAttempts: 0,
         ),
       ],
       usage: const [
