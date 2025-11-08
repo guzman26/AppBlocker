@@ -8,6 +8,10 @@ class BlockSession {
     required this.progress,
     required this.isActive,
     required this.accentColor,
+    required this.focusLevel,
+    required this.blockedApps,
+    required this.automationNotes,
+    required this.overrideAttempts,
   });
 
   final String name;
@@ -16,4 +20,8 @@ class BlockSession {
   final double progress;
   final bool isActive;
   final Color accentColor;
+  final String focusLevel;
+  final List<String> blockedApps;
+  final List<String> automationNotes;
+  final int overrideAttempts;
 }

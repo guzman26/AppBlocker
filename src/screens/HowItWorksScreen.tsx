@@ -11,7 +11,7 @@ interface FeatureCardProps {
   icon: string;
   title: string;
   description: string;
-  gradient: string[];
+  gradient: readonly [string, string];
 }
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, gradient }) => {
@@ -82,7 +82,7 @@ export const HowItWorksScreen: React.FC = () => {
 
         {/* Hero Banner */}
         <LinearGradient
-          colors={['#667EEA', '#764BA2']}
+          colors={['#667EEA', '#764BA2'] as const}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroBanner}
@@ -105,19 +105,19 @@ export const HowItWorksScreen: React.FC = () => {
             icon="lock-closed"
             title="Bloqueo inteligente"
             description="Bloquea apps distractoras durante tus sesiones de enfoque"
-            gradient={['#0A84FF', '#5E5CE6']}
+            gradient={['#0A84FF', '#5E5CE6'] as const}
           />
           <FeatureCard
             icon="calendar"
             title="Horarios automáticos"
             description="Programa bloqueos recurrentes según tu rutina diaria"
-            gradient={['#AF52DE', '#FF2D55']}
+            gradient={['#AF52DE', '#FF2D55'] as const}
           />
           <FeatureCard
             icon="analytics"
             title="Insights detallados"
             description="Visualiza tu uso y progreso con métricas claras"
-            gradient={['#34C759', '#64D2FF']}
+            gradient={['#34C759', '#64D2FF'] as const}
           />
           <FeatureCard
             icon="timer"
