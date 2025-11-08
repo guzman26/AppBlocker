@@ -3,21 +3,15 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NewDashboardScreen } from './screens/NewDashboardScreen';
-import { NewScheduleScreen } from './screens/NewScheduleScreen';
-import { NewInsightsScreen } from './screens/NewInsightsScreen';
-import { NewSettingsScreen } from './screens/NewSettingsScreen';
-import { AppBlockerScreen } from './screens/AppBlockerScreen';
-import { HowItWorksScreen } from './screens/HowItWorksScreen';
+import { HomeScreen } from './screens/HomeScreen';
+import { InterventionSettingsScreen } from './screens/InterventionSettingsScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { CupertinoTabBar } from './components/CupertinoTabBar';
 import { colors } from './theme';
 
 type RootTabParamList = {
-  Dashboard: undefined;
-  AppBlocker: undefined;
-  Schedule: undefined;
-  Insights: undefined;
-  HowItWorks: undefined;
+  Home: undefined;
+  Interventions: undefined;
   Settings: undefined;
 };
 
@@ -50,12 +44,9 @@ const App: React.FC = () => {
             headerShown: false,
           }}
         >
-          <Tab.Screen name="Dashboard" component={NewDashboardScreen} />
-          <Tab.Screen name="AppBlocker" component={AppBlockerScreen} />
-          <Tab.Screen name="Schedule" component={NewScheduleScreen} />
-          <Tab.Screen name="Insights" component={NewInsightsScreen} />
-          <Tab.Screen name="HowItWorks" component={HowItWorksScreen} />
-          <Tab.Screen name="Settings" component={NewSettingsScreen} />
+          <Tab.Screen name="Home" component={HomeScreen} />
+          <Tab.Screen name="Interventions" component={InterventionSettingsScreen} />
+          <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

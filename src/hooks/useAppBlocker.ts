@@ -1,33 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
 import ScreenTimeManager from '../native/ScreenTimeManager';
 import type { SelectionPayload } from '../native/ScreenTimeManager';
-import FocusGuardianService from '../services/FocusGuardianService';
-
-export interface GuardianStatus {
-  isEnabled: boolean;
-  warningCount: number;
-  lastWarningAt: Date | null;
-  remindersScheduled: boolean;
-  reminderIntervalMinutes: number;
-  permissionGranted: boolean;
-}
-
-const GUARDIAN_REMINDER_MINUTES = 5;
 
 interface UseAppBlockerReturn {
   isAuthorized: boolean;
   blockedApps: string[];
   isBlocking: boolean;
-  isSessionActive: boolean;
+  isBlockingActive: boolean;
   requestAuthorization: () => Promise<boolean>;
-  selectAndBlockApps: () => Promise<boolean | null>;
-  unblockAllApps: () => Promise<boolean>;
-  startBlockingSession: (name: string, duration: number) => Promise<boolean>;
-  stopBlockingSession: () => Promise<boolean>;
+  selectApps: () => Promise<boolean>;
+  toggleBlocking: (active: boolean) => Promise<boolean>;
   refreshBlockedApps: () => Promise<void>;
-  guardianStatus: GuardianStatus;
-  setGuardianEnabled: (enabled: boolean) => Promise<boolean>;
   hasSelection: boolean;
 }
 
@@ -35,28 +18,8 @@ export const useAppBlocker = (): UseAppBlockerReturn => {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [blockedApps, setBlockedApps] = useState<string[]>([]);
   const [isBlocking, setIsBlocking] = useState(false);
-  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [isBlockingActive, setIsBlockingActive] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
-  const [guardianStatus, setGuardianStatus] = useState<GuardianStatus>({
-    isEnabled: false,
-    warningCount: 0,
-    lastWarningAt: null,
-    remindersScheduled: false,
-    reminderIntervalMinutes: GUARDIAN_REMINDER_MINUTES,
-    permissionGranted: false,
-  });
-
-  const guardianStatusRef = useRef(guardianStatus);
-  const isSessionActiveRef = useRef(isSessionActive);
-  const activeSessionNameRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    guardianStatusRef.current = guardianStatus;
-  }, [guardianStatus]);
-
-  useEffect(() => {
-    isSessionActiveRef.current = isSessionActive;
-  }, [isSessionActive]);
 
   // Request Screen Time authorization
   const requestAuthorization = useCallback(async (): Promise<boolean> => {
@@ -75,27 +38,16 @@ export const useAppBlocker = (): UseAppBlockerReturn => {
     try {
       const selection = await ScreenTimeManager.getBlockedApps();
       setBlockedApps(selection.applications);
-      setHasSelection(selectionHasContent(selection));
+      const hasContent = selectionHasContent(selection);
+      setHasSelection(hasContent);
+      setIsBlockingActive(hasContent);
     } catch (error) {
       console.error('Error refreshing blocked apps:', error);
     }
   }, []);
 
-  // Check if session is active
-  const checkSessionStatus = useCallback(async () => {
-    try {
-      const active = await ScreenTimeManager.isSessionActive();
-      setIsSessionActive(active);
-      if (!active) {
-        activeSessionNameRef.current = null;
-      }
-    } catch (error) {
-      console.error('Error checking session status:', error);
-    }
-  }, []);
-
-  // Select and block apps using Family Activity Picker
-  const selectAndBlockApps = useCallback(async (): Promise<boolean | null> => {
+  // Select apps using Family Activity Picker (doesn't block immediately)
+  const selectApps = useCallback(async (): Promise<boolean> => {
     if (!isAuthorized) {
       const authorized = await requestAuthorization();
       if (!authorized) {
@@ -109,164 +61,59 @@ export const useAppBlocker = (): UseAppBlockerReturn => {
       const selection = await ScreenTimeManager.openFamilyActivityPicker();
       const selectionChosen = selectionHasContent(selection);
 
-      if (!selectionChosen) {
-        setIsBlocking(false);
-        setHasSelection(false);
-        return null;
-      }
-
-      // Block the selected apps
-      const success = await ScreenTimeManager.blockSelectedApps();
-
-      if (success) {
+      if (selectionChosen) {
         setBlockedApps(selection.applications);
         setHasSelection(true);
-        await refreshBlockedApps();
-      }
-
-      return success;
-    } catch (error) {
-      console.error('Error selecting and blocking apps:', error);
-      return false;
-    } finally {
-      setIsBlocking(false);
-    }
-  }, [isAuthorized, requestAuthorization, refreshBlockedApps]);
-
-  // Unblock all apps
-  const unblockAllApps = useCallback(async (): Promise<boolean> => {
-    setIsBlocking(true);
-    try {
-      const success = await ScreenTimeManager.unblockApps();
-      if (success) {
-        setHasSelection(false);
-        await refreshBlockedApps();
-      }
-      return success;
-    } catch (error) {
-      console.error('Error unblocking apps:', error);
-      return false;
-    } finally {
-      setIsBlocking(false);
-    }
-  }, [refreshBlockedApps]);
-
-  // Start a timed blocking session
-  const startBlockingSession = useCallback(
-    async (name: string, durationMinutes: number): Promise<boolean> => {
-      if (!isAuthorized) {
-        const authorized = await requestAuthorization();
-        if (!authorized) {
-          return false;
-        }
-      }
-
-      try {
-        const startTime = new Date();
-        const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
-
-        activeSessionNameRef.current = name;
-        const success = await ScreenTimeManager.startSession(name, startTime, endTime);
-
-        if (success) {
-          await checkSessionStatus();
+        
+        // If blocking was already active, apply the new selection immediately
+        if (isBlockingActive) {
+          await ScreenTimeManager.blockSelectedApps();
           await refreshBlockedApps();
-          setHasSelection(true);
-          setGuardianStatus((prev) => ({
-            ...prev,
-            warningCount: 0,
-            lastWarningAt: null,
-          }));
-          if (guardianStatusRef.current.isEnabled) {
-            const scheduled = await FocusGuardianService.scheduleReturnReminderAsync(
-              guardianStatusRef.current.reminderIntervalMinutes,
-              name
-            );
-            if (scheduled && !guardianStatusRef.current.remindersScheduled) {
-              setGuardianStatus((prev) => ({
-                ...prev,
-                remindersScheduled: true,
-              }));
-            }
-          }
         }
+      }
 
-        return success;
-      } catch (error) {
-        console.error('Error starting blocking session:', error);
+      return selectionChosen;
+    } catch (error) {
+      console.error('Error selecting apps:', error);
+      return false;
+    } finally {
+      setIsBlocking(false);
+    }
+  }, [isAuthorized, isBlockingActive, requestAuthorization, refreshBlockedApps]);
+
+  // Toggle blocking on/off
+  const toggleBlocking = useCallback(
+    async (active: boolean): Promise<boolean> => {
+      if (!hasSelection) {
+        console.warn('No apps selected to block');
         return false;
       }
-    },
-    [isAuthorized, requestAuthorization, checkSessionStatus, refreshBlockedApps]
-  );
 
-  // Stop the current blocking session
-  const stopBlockingSession = useCallback(async (): Promise<boolean> => {
-    try {
-      const success = await ScreenTimeManager.stopSession();
-      if (success) {
-        await checkSessionStatus();
-        await refreshBlockedApps();
-        activeSessionNameRef.current = null;
-        await FocusGuardianService.cancelScheduledRemindersAsync();
-        if (guardianStatusRef.current.remindersScheduled) {
-          setGuardianStatus((prev) => ({
-            ...prev,
-            remindersScheduled: false,
-          }));
-        }
-      }
-      return success;
-    } catch (error) {
-      console.error('Error stopping blocking session:', error);
-      return false;
-    }
-  }, [checkSessionStatus, refreshBlockedApps]);
-
-  const setGuardianEnabled = useCallback(
-    async (enabled: boolean): Promise<boolean> => {
-      if (enabled) {
-        const granted = await FocusGuardianService.ensurePermissionsAsync();
-        if (!granted) {
-          setGuardianStatus((prev) => ({
-            ...prev,
-            isEnabled: false,
-            permissionGranted: false,
-          }));
-          return false;
-        }
-
-        setGuardianStatus((prev) => ({
-          ...prev,
-          isEnabled: true,
-          permissionGranted: true,
-        }));
-
-        if (isSessionActiveRef.current) {
-          const scheduled = await FocusGuardianService.scheduleReturnReminderAsync(
-            guardianStatusRef.current.reminderIntervalMinutes,
-            activeSessionNameRef.current ?? 'tu sesión de focus'
-          );
-          if (scheduled) {
-            setGuardianStatus((prev) => ({
-              ...prev,
-              remindersScheduled: true,
-            }));
+      setIsBlocking(true);
+      try {
+        if (active) {
+          const success = await ScreenTimeManager.blockSelectedApps();
+          if (success) {
+            setIsBlockingActive(true);
+            await refreshBlockedApps();
           }
+          return success;
+        } else {
+          const success = await ScreenTimeManager.unblockApps();
+          if (success) {
+            setIsBlockingActive(false);
+            await refreshBlockedApps();
+          }
+          return success;
         }
-
-        return true;
+      } catch (error) {
+        console.error('Error toggling blocking:', error);
+        return false;
+      } finally {
+        setIsBlocking(false);
       }
-
-      await FocusGuardianService.cancelScheduledRemindersAsync();
-      setGuardianStatus((prev) => ({
-        ...prev,
-        isEnabled: false,
-        remindersScheduled: false,
-      }));
-      return true;
     },
-    []
+    [hasSelection, refreshBlockedApps]
   );
 
   // Initialize - check authorization and load blocked apps
@@ -275,7 +122,6 @@ export const useAppBlocker = (): UseAppBlockerReturn => {
       const authorized = await ScreenTimeManager.checkAuthorizationStatus();
       setIsAuthorized(authorized);
       await refreshBlockedApps();
-      await checkSessionStatus();
     };
 
     initialize();
@@ -284,120 +130,22 @@ export const useAppBlocker = (): UseAppBlockerReturn => {
     const subscription = ScreenTimeManager.addListener((event) => {
       console.log('Screen Time event:', event);
       refreshBlockedApps();
-      checkSessionStatus();
     });
 
     return () => {
       subscription.remove();
     };
-  }, [refreshBlockedApps, checkSessionStatus]);
-
-  useEffect(() => {
-    const handleAppStateChange = (nextState: AppStateStatus) => {
-      if (!guardianStatusRef.current.isEnabled || !isSessionActiveRef.current) {
-        return;
-      }
-
-      if (nextState === 'active') {
-        FocusGuardianService.cancelScheduledRemindersAsync().finally(() => {
-          if (guardianStatusRef.current.remindersScheduled) {
-            setGuardianStatus((prev) => ({
-              ...prev,
-              remindersScheduled: false,
-            }));
-          }
-        });
-        return;
-      }
-
-      if (nextState === 'background' || nextState === 'inactive') {
-        const sessionName =
-          activeSessionNameRef.current ?? 'tu sesión de enfoque';
-
-        FocusGuardianService.sendGuardianAlertAsync(sessionName)
-          .then((alerted) => {
-            if (alerted) {
-              setGuardianStatus((prev) => ({
-                ...prev,
-                warningCount: prev.warningCount + 1,
-                lastWarningAt: new Date(),
-              }));
-            }
-          })
-          .catch((error) => {
-            console.error('Error enviando alerta de guardian', error);
-          });
-
-        FocusGuardianService.scheduleReturnReminderAsync(
-          guardianStatusRef.current.reminderIntervalMinutes,
-          sessionName
-        )
-          .then((scheduled) => {
-            if (scheduled) {
-              setGuardianStatus((prev) => ({
-                ...prev,
-                remindersScheduled: true,
-              }));
-            }
-          })
-          .catch((error) => {
-            console.error('Error programando recordatorio de guardian', error);
-          });
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isSessionActiveRef.current) {
-      FocusGuardianService.cancelScheduledRemindersAsync().finally(() => {
-        if (guardianStatusRef.current.remindersScheduled) {
-          setGuardianStatus((prev) => ({
-            ...prev,
-            remindersScheduled: false,
-          }));
-        }
-      });
-      return;
-    }
-
-    if (guardianStatusRef.current.isEnabled && !guardianStatusRef.current.remindersScheduled) {
-      FocusGuardianService.scheduleReturnReminderAsync(
-        guardianStatusRef.current.reminderIntervalMinutes,
-        activeSessionNameRef.current ?? 'tu sesión de enfoque'
-      )
-        .then((scheduled) => {
-          if (scheduled) {
-            setGuardianStatus((prev) => ({
-              ...prev,
-              remindersScheduled: true,
-            }));
-          }
-        })
-        .catch((error) => {
-          console.error('Error preparando recordatorios de guardian', error);
-        });
-    }
-  }, [isSessionActive]);
+  }, [refreshBlockedApps]);
 
   return {
     isAuthorized,
     blockedApps,
     isBlocking,
-    isSessionActive,
+    isBlockingActive,
     requestAuthorization,
-    selectAndBlockApps,
-    unblockAllApps,
-    startBlockingSession,
-    stopBlockingSession,
+    selectApps,
+    toggleBlocking,
     refreshBlockedApps,
-    guardianStatus,
-    setGuardianEnabled,
     hasSelection,
   };
 };

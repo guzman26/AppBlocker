@@ -1,117 +1,163 @@
 # AppBlocker
 
-Aplicación Expo (React Native + TypeScript) orientada a iOS que se integra con las Screen Time APIs de Apple (FamilyControls y DeviceActivity)
-para crear rutinas de bloqueo de aplicaciones con funcionalidades avanzadas inspiradas en Opal y One Sec.
+A minimalist iOS app for mindful app blocking, inspired by OneSec. Instead of rigid restrictions, AppBlocker adds intentional friction through breathing exercises and reflection prompts when you try to open distracting apps.
 
-## Funcionalidades clave
+## Philosophy
 
-### Bloqueo de Apps
-- Selección guiada de aplicaciones mediante el picker nativo de Screen Time
-- Rutinas inteligentes configurables por horario y días de la semana
-- Bloqueos de foco instantáneos (15, 25, 45, 60 minutos)
+Traditional app blockers use hard restrictions that can be frustrating. AppBlocker takes a different approach inspired by OneSec:
 
-### Fricción Intencional (One Sec)
-- Pausas obligatorias con ejercicios de respiración antes de abrir apps bloqueadas
-- Prompts de intención: "¿Por qué quieres abrir esta app?"
-- Sugerencias de alternativas saludables
-- Recordatorios de intención
+- **Mindful Interventions**: Brief pauses with breathing exercises create moments of reflection
+- **Intentional Design**: Ask yourself "why?" before opening an app
+- **Gentle Friction**: Reduce impulsive behavior without harsh blocks
+- **iOS Native**: Uses Apple's Screen Time API for system-level blocking
 
-### Analytics y Reportes (Opal)
-- Gráficas de tiempo bloqueado (últimos 7 días)
-- Métricas de racha actual de días consecutivos
-- Estadísticas semanales y mensuales
-- Conteo de intervenciones y bloqueos exitosos
-- Progreso hacia metas diarias
+## Features
 
-### Bloqueo de Sitios Web
-- Bloquear dominios específicos en Safari y otros navegadores
-- Aplicar mismos horarios que apps bloqueadas
-- Gestión de lista de sitios bloqueados
+### Simple App Blocking
+- Select apps to block using iOS's native picker
+- Toggle blocking ON/OFF with a simple switch
+- No complex scheduling or timers - just focused simplicity
 
-### Integración con Focus Modes
-- Sincronización con Focus Modes nativos de iOS
-- Activación automática de bloqueos según Focus Mode activo
+### Mindful Interventions
+- **Breathing Exercise**: Guided breathing pause (5-30 seconds)
+- **Intention Prompt**: Reflect on why you want to open the app
+- **Alternative Suggestions**: Consider healthier activities
+- All interventions are fully customizable
 
-## Requisitos
+### Clean Interface
+- 3 tabs: Home, Interventions, Settings
+- Minimal, distraction-free design
+- Focus on what matters
 
-- macOS con Xcode 15 o superior.
-- CocoaPods instalado (`sudo gem install cocoapods`).
-- Node.js 18+ y Yarn o npm.
-- Expo CLI (`npm install -g expo-cli`) o uso de `npx expo`.
-- Un dispositivo o simulador con iOS 16+.
-- Acceso a las Screen Time APIs requiere activar la capability "Family Controls" en el proyecto Xcode y habilitar el Signing adecuado.
+## Requirements
 
-## Instalación
+- **iOS 16+** - Required for Screen Time API
+- **Screen Time Permission** - Grant access to block apps
+- **Device or Simulator** - Not available on web
+
+## Installation
 
 ```bash
-yarn install
-```
+# Install dependencies
+npm install
 
-> **Nota:** al tratarse de un módulo nativo personalizado, es necesario ejecutar una prebuild para sincronizar los cambios con el proyecto iOS de Expo Dev Client.
-
-```bash
+# Prebuild iOS native modules
 npx expo prebuild --platform ios
-(cd ios && pod install)
+
+# Install iOS pods
+cd ios && pod install && cd ..
 ```
 
-## Ejecución
-
-Durante el desarrollo puedes ejecutar el bundle Metro con Expo y lanzar el cliente de iOS:
+## Running the App
 
 ```bash
-yarn start # expo start
-yarn ios   # expo run:ios
+# Start Metro bundler
+npm start
+
+# Run on iOS
+npm run ios
 ```
 
-Si ya tienes el proyecto iOS precompilado, también puedes abrir `ios/AppBlocker.xcworkspace` en Xcode y ejecutar desde allí.
+You can also open `ios/AppBlocker.xcworkspace` in Xcode and run from there.
 
-## Estructura destacada
+## Project Structure
 
-### Navegación
-- `src/App.tsx`: Navegación por tabs con 4 pantallas principales
+```
+src/
+├── screens/
+│   ├── HomeScreen.tsx                    # Select apps and toggle blocking
+│   ├── InterventionSettingsScreen.tsx    # Configure interventions
+│   ├── SettingsScreen.tsx                # App info and settings
+│   └── IntentionPromptScreen.tsx         # Intervention flow modal
+├── components/
+│   ├── BreathingExercise.tsx            # Breathing animation
+│   ├── IntentionInput.tsx               # Intention prompt
+│   ├── AlternativeSuggestion.tsx        # Alternative activities
+│   ├── PrimaryButton.tsx                # Button component
+│   ├── Card.tsx                         # Card component
+│   └── CupertinoTabBar.tsx              # Custom tab bar
+├── hooks/
+│   ├── useAppBlocker.ts                 # App blocking logic
+│   └── useIntervention.ts               # Intervention configuration
+├── native/
+│   └── ScreenTimeManager.ts             # React Native bridge
+└── theme/
+    ├── colors.ts                        # Color palette
+    ├── spacing.ts                       # Spacing system
+    └── typography.ts                    # Typography styles
 
-### Pantallas
-- `src/screens/DashboardScreen.tsx`: Configurar apps, rutinas y focos inmediatos
-- `src/screens/AnalyticsScreen.tsx`: Métricas, gráficas y reportes de uso
-- `src/screens/WebsiteBlockerScreen.tsx`: Gestión de sitios web bloqueados
-- `src/screens/FocusModeScreen.tsx`: Integración con Focus Modes de iOS
-- `src/screens/IntentionPromptScreen.tsx`: Modal de intervención con pausas
+ios/
+└── AppBlocker/
+    ├── ScreenTimeManager.swift          # Native iOS implementation
+    └── ScreenTimeManagerBridge.m        # Objective-C bridge
+```
 
-### Hooks
-- `src/hooks/useAppBlocker.ts`: Gestión de bloqueos y rutinas
-- `src/hooks/useAnalytics.ts`: Métricas y estadísticas de uso
-- `src/hooks/useIntervention.ts`: Configuración de fricción intencional
-- `src/hooks/useWebsiteBlocker.ts`: Bloqueo de sitios web
-- `src/hooks/useFocusMode.ts`: Sincronización con Focus Modes
+## How It Works
 
-### Componentes
-- `src/components/BreathingExercise.tsx`: Animación de respiración
-- `src/components/IntentionInput.tsx`: Input de intención
-- `src/components/AlternativeSuggestion.tsx`: Sugerencias de alternativas
-- `src/components/UsageChart.tsx`: Gráfica de uso semanal
-- `src/components/StatCard.tsx`: Tarjetas de métricas
-- `src/components/ProgressRing.tsx`: Anillo de progreso
+### The iOS Screen Time API
 
-### Servicios
-- `src/services/storage.ts`: Servicio centralizado de AsyncStorage
-- `src/types/index.ts`: Tipos TypeScript compartidos
+AppBlocker uses Apple's FamilyControls and ManagedSettings frameworks:
 
-### Módulo Nativo iOS
-- `ios/ScreenTimeManager.swift`: Implementación de FamilyControls y DeviceActivity
-- `ios/ScreenTimeManager.m`: Bridge Objective-C
+1. **Authorization**: Request permission to manage Screen Time settings
+2. **App Selection**: Use `FamilyActivityPicker` to let users choose apps
+3. **Blocking**: Apply shields using `ManagedSettingsStore`
+4. **Toggle**: Enable/disable blocking with a simple switch
 
-## Notas sobre Screen Time
+### The OneSec Approach
 
-- Al iniciar la app se solicita autorización a `AuthorizationCenter` para controlar Screen Time.
-- Se utiliza `FamilyActivityPickerViewController` para que la persona elija las apps a bloquear.
-- Las rutinas se programan vía `DeviceActivityCenter`, aplicando restricciones mediante `ManagedSettingsStore`.
-- Las APIs de Screen Time requieren que la app forme parte del programa Apple Developer y se distribuya mediante TestFlight para
-  pruebas reales.
+When blocking is active and you try to open a blocked app:
 
-## Lint y chequeo de tipos
+1. **iOS Shield**: iOS shows its native "app blocked" screen
+2. **Future**: Shortcut integration to trigger interventions before unblocking
+3. **Mindful Pause**: Optional breathing exercise and intention prompt
+4. **Conscious Choice**: Decide if you really want to proceed
+
+## Limitations
+
+The iOS Screen Time API has some restrictions:
+
+- **iOS 16+ only** - Older versions don't have the API
+- **No direct intervention trigger** - iOS shows shield first, interventions can be added via Shortcuts
+- **TestFlight/App Store required** - For distribution and full testing
+- **No web or Android** - iOS-only API
+
+## Development Notes
+
+### TypeScript & Linting
 
 ```bash
-yarn lint
-yarn eslint
-yarn typecheck # usando tsc --noEmit si se desea ejecutar manualmente
+# Type checking
+npm run typecheck
+
+# Linting
+npm run lint
+
+# Format code
+npm run prettier:fix
 ```
+
+### Native Module Updates
+
+If you modify `ScreenTimeManager.swift`:
+
+```bash
+# Rebuild native modules
+npx expo prebuild --platform ios --clean
+cd ios && pod install
+```
+
+## Inspiration
+
+This app is inspired by:
+
+- **[OneSec](https://one-sec.app)**: Mindful interventions for app usage
+- **Apple Screen Time API**: Native iOS blocking capabilities
+- **Minimalist Design**: Focus on simplicity and effectiveness
+
+## License
+
+This is a personal project. Use at your own discretion.
+
+## Contributing
+
+This is a simplified, focused implementation. The goal is to keep it simple and effective rather than feature-rich.

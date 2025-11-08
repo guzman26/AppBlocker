@@ -51,10 +51,8 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSCameraUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your camera</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <key>NSFamilyControlsUsageDescription</key>
+    <string>Necesitamos acceder a Screen Time para ayudarte a bloquear aplicaciones y mantener el enfoque.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Necesitamos acceder a tu biblioteca para mostrar íconos personalizados.</string>
     <key>NSUserTrackingUsageDescription</key>

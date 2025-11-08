@@ -7,6 +7,7 @@ export const colors = {
   textSecondary: '#3C3C43',
   textTertiary: '#3C3C4399',
   success: '#34C759',
+  warning: '#FF9500',
   caution: '#FF9500',
   destructive: '#FF3B30',
   accentPurple: '#AF52DE',

@@ -6,20 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, typography } from '../theme';
 
 const icons: Record<string, { active: string; inactive: string }> = {
-  Dashboard: { active: 'grid', inactive: 'grid-outline' },
-  AppBlocker: { active: 'lock-closed', inactive: 'lock-closed-outline' },
-  Schedule: { active: 'calendar', inactive: 'calendar-outline' },
-  Insights: { active: 'bar-chart', inactive: 'bar-chart-outline' },
-  HowItWorks: { active: 'book', inactive: 'book-outline' },
+  Home: { active: 'home', inactive: 'home-outline' },
+  Interventions: { active: 'pause-circle', inactive: 'pause-circle-outline' },
   Settings: { active: 'settings', inactive: 'settings-outline' },
 };
 
 const labels: Record<string, string> = {
-  Dashboard: 'Resumen',
-  AppBlocker: 'Bloqueo',
-  Schedule: 'Horarios',
-  Insights: 'Insights',
-  HowItWorks: 'Guía',
+  Home: 'Inicio',
+  Interventions: 'Intervenciones',
   Settings: 'Ajustes',
 };
 
